@@ -27,5 +27,4 @@ def leap_table():
     # Map each string in line to objects and return named table
     table = list(map(map_item, items))
     table = np.array(table, dtype=table_fmt)
-
     return table

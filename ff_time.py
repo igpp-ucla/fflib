@@ -1,4 +1,3 @@
-from FF_Time import FFTIME
 from datetime import datetime, timedelta, timezone
 import numpy as np
 from bisect import bisect_left
@@ -24,7 +23,6 @@ def date_to_ff_tick(date, epoch):
     ''' Maps a datetime object to a seconds since epoch '''
     # Get initial leap seconds value from table
     epoch_dt = epoch_to_dt[epoch]
-    tai_dt = datetime(1972, 1, 1)
 
     index = bisect_left(ff_leap_table['date'], epoch_dt)
     base_leap = ff_leap_table['leap_sec'][index]
@@ -46,13 +44,6 @@ def get_leap_info(epoch):
     leapvalues = ff_leap_table['leap_sec']
     return dates, seconds, leapvalues
 
-def ff_ts_to_asc(ts):
-    ''' Maps UTC timestamp from flat file to year-month-dayThh:mm:ss.sss format '''
-    year, doy, mon, day, timestr = ts.split(' ')
-    monstr = datetime.strptime(mon, '%b').strftime('%m')
-    datestr = '-'.join([year, monstr, day])
-    return f'{datestr}T{timestr}'
-
 def ticks_to_datetimes(ticks, epoch):
     ''' 
         Maps seconds relative to an epoch to datetime objects
@@ -66,8 +57,6 @@ def ticks_to_datetimes(ticks, epoch):
     # Get start/ending ticks
     if len(ticks) == 0:
         return np.array([])
-    if len(ticks) == 1:
-        return [FFTIME(ticks[0], Epoch=epoch).UTC]
 
     t0, t1 = ticks[[0, -1]]
 
@@ -94,7 +83,7 @@ def ticks_to_datetimes(ticks, epoch):
             elif index - 1 > 0 and ticks[index-1] == leap:
                 true_leaps.append(index-1)
 
-        elif leap < t0:
+        elif leap <= t0:
             # Largest leap second <= t0 is used to set 
             # the starting offset for the array
             base_leap_offset = leapval
@@ -119,7 +108,7 @@ def ticks_to_datetimes(ticks, epoch):
 
     return datevals, true_leaps
 
-def ticks_to_ts(ticks, epoch):
+def ticks_to_asc_ts(ticks, epoch):
     ''' Converts an array of time ticks relative to the given epoch to a
         timestamp in year-month-dayThh:mm:ss.sss format
     '''
@@ -130,18 +119,55 @@ def ticks_to_ts(ticks, epoch):
     datevals, true_leaps = ticks_to_datetimes(ticks, epoch)
     
     # Convert datetimes to timestamps (%-formatting faster than strftime)
-    dt_to_ts = lambda dt : ('%d-%02d-%02dT%02d:%02d:%02d.%06d' % (dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second, dt.microsecond))[:-3]
+    fmt_str = '%d-%02d-%02dT%02d:%02d:%02d.%06d'
+    dt_to_ts = lambda dt : (fmt_str % (dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second, dt.microsecond))[:-3]
     datestrs = [dt_to_ts(dt) for dt in datevals]
 
     # Set special timestamp for true leapseconds
     for leap_index in true_leaps:
-        # Use FFTIME to get UTC timestamp
-        leap_ts = FFTIME(ticks[leap_index], Epoch=epoch).UTC
-
-        # Map UTC timestamp to dateTtime format
-        leap_ts = ff_ts_to_asc(leap_ts)
-
-        # Replace timestamp in list
-        datestrs[leap_index] = leap_ts
+        datestrs[leap_index] = datestrs[leap_index][:-5] + '60.000'
 
     return datestrs
+
+def ticks_to_ff_ts(ticks, epoch):
+    ''' 
+        Converts an array of time ticks relative to the given epoch to a
+        timestamp in year month_abrv day hh:mm:ss.sss format
+    '''
+    if len(ticks) == 0:
+        return np.array([])
+
+    # Convert ticks to datetimes and get indices of leap seconds
+    datevals, true_leaps = ticks_to_datetimes(ticks, epoch)
+    
+    # Convert datetimes to timestamps (%-formatting faster than strftime)
+    dt_to_ts = lambda dt : dt.strftime(ff_fmt)
+    datestrs = [dt_to_ts(dt) for dt in datevals]
+
+    # Set special timestamp for true leapseconds
+    for leap_index in true_leaps:
+        datestrs[leap_index] = datestrs[leap_index][:-5] + '60.000'
+
+    return datestrs
+
+def tick_to_date(tick, epoch):
+    ''' Converts a tick to a datetime object '''
+    dates, leaps = ticks_to_datetimes(np.array([tick]), epoch)
+    return dates[0]
+
+def tick_to_asc_ts(tick, epoch):
+    ''' Converts a tick to a timestamp in year-month-dayThh:mm:ss.sss format '''
+    return ticks_to_asc_ts(np.array(tick), epoch)[0]
+
+def tick_to_ff_ts(tick, epoch):
+    ''' 
+        Converts a tick to a timestamp in 'year month_abrv day hh:mm:ss.sss' format
+    '''
+    return ticks_to_ff_ts(np.array(tick), epoch)[0]
+
+def ff_ts_to_asc(ts):
+    ''' Maps UTC timestamp from flat file to year-month-dayThh:mm:ss.sss format '''
+    year, doy, mon, day, timestr = ts.split(' ')
+    monstr = datetime.strptime(mon, '%b').strftime('%m')
+    datestr = '-'.join([year, monstr, day])
+    return f'{datestr}T{timestr}'
