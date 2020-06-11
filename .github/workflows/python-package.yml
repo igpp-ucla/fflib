@@ -1,0 +1,26 @@
+# This workflow will download the latest leapseconds file and update the
+# repository if a change is detected
+
+name: Update leap seconds file
+
+# Run once a month
+on:
+  schedule:
+    - cron: "0 0 1 * *"
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.6, 3.7, 3.8]
+        link: ["https://www.ietf.org/timezones/data/leap-seconds.list"]
+
+    steps:
+    - name: Download latest leap-seconds.list file
+      run: wget ${{ matrix.link }}
+    - name: Check if lines were added
+      run: result=$(git diff --numstat leap-seconds.list | awk '{print $1'})
+    - name: Update repository if additional lines detected
+      run: if [ $result ]; then git add leap-seconds.list; git commit -m "Updated leap second list"; git push; fi
