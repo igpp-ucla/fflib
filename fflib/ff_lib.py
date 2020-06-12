@@ -1,6 +1,7 @@
 import re
 import numpy as np
 import os
+from numpy.lib import recfunctions as rfn
 
 class ff_header():
     ''' Internal class for managing flat file header information '''
@@ -376,13 +377,16 @@ class ff_reader():
         # Convert binary records to data
         dtype = self._get_dtype(cols)
         if num_bytes == len(data): # If no extra bytes detected
+            # Read data from file w/ given dtype and convert to unstructured array
             data = np.fromfile(f'{self.name}.ffd', dtype, rows)
+            data = rfn.structured_to_unstructured(data, dtype='f8')
         else:
             # If data length is off, split by recl and convert to non-binary
             records = [data[i*recl:(i+1)*recl] for i in range(0, rows)]
             data = [np.frombuffer(record, dtype=dtype) for record in records]
+            data = np.array(data)
         
-        self.data = np.array(data.tolist())
+        self.data = data
     
     def shape(self):
         ''' Returns the number of rows and columns in the file '''
@@ -428,7 +432,7 @@ class ff_reader():
         if not include_times:
             data = data[:,1:]
 
-        return np.array(data.tolist())
+        return data
     
     def get_times(self, fmt='ticks'):
         ''' Returns the time array '''
@@ -482,7 +486,7 @@ class ff_reader():
         t0, t1 = self.get_times()[[0, -1]]
         return (t0, t1)
     
-    def to_csv(self, name=None, prec=7):
+    def to_csv(self, name=None, prec=7, timestamps=False):
         ''' Writes out the flat file data to a comma-separated-value file
             
             Optional name argument specifies an alternate filename to

@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 import numpy as np
 from bisect import bisect_left
-from leap_table import leap_table
+from .leap_table import leap_table
 
 # Flat file strptime/strftime format
 ff_fmt = '%Y %j %b %d %H:%M:%S.%f'
