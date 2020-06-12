@@ -1,6 +1,7 @@
 import re
 import numpy as np
 import os
+from . import ff_time
 from numpy.lib import recfunctions as rfn
 
 class ff_header():

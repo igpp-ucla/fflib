@@ -1,6 +1,8 @@
 from datetime import datetime
 import numpy as np
+import os
 
+relative_path = os.path.dirname(__file__)
 leap_file = 'leap-seconds.list'
 date_fmt = '# %d %b %Y'
 table_fmt = [('tai', 'f8'), ('leap_sec', 'f8'), ('date', datetime)]
@@ -14,7 +16,8 @@ def leap_table():
         array of each leap second entry
     '''
     # Open leap second list and read lines
-    fd = open(leap_file, 'r')
+    leap_file_path = os.path.join(relative_path, leap_file)
+    fd = open(leap_file_path, 'r')
     lines = fd.readlines()
     fd.close()
 
