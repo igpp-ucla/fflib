@@ -50,12 +50,10 @@ class ff_header():
             f'Rows, Columns: {nrows}, {ncols}',
         ]
 
-        for line in lines:
-            print (line)
+        lines += self._format_col_desc()
+
+        print ('\n'.join(lines))
         
-        print ('\t'.join(self.col_table.dtype.names))
-        print ('\n'.join('\t'.join(list(map(str, row))) for row in self.col_table))
-    
     def _read(self, name=None):
         ''' Reads in header .ffh file and sets internal values accordingly '''
         name = self.name if name is None else name
@@ -387,6 +385,8 @@ class ff_reader():
             data = np.array(data)
         
         self.data = data
+
+        return data
     
     def shape(self):
         ''' Returns the number of rows and columns in the file '''
@@ -412,7 +412,7 @@ class ff_reader():
         
         return True
 
-    def print_header(self):
+    def list_header(self):
         ''' Prints key information from the header file and column desc table '''
         self.header.list_info()
 
@@ -514,6 +514,7 @@ class ff_writer():
         self.header = ff_header(name, read_mode=False, copy_header=copy_header)
 
     def set_epoch(self, epoch):
+        ''' Sets the epoch (in string-format) for the file '''
         self.header.set_epoch(epoch)
 
     def set_data(self, times, data, epoch=None):
