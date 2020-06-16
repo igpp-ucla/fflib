@@ -491,22 +491,41 @@ class ff_reader():
         return self.header.get_error_flag()
     
     def get_time_range(self):
-        ''' Returns the start/end time of this file '''
+        ''' Returns the start/end time ticks of this file '''
         # Read first/last ticks from time array if data has been loaded
         t0, t1 = self.get_times()[[0, -1]]
         return (t0, t1)
     
-    def to_csv(self, name=None, prec=7, timestamps=False):
+    def to_csv(self, name=None, prec=7):
         ''' Writes out the flat file data to a comma-separated-value file
             
             Optional name argument specifies an alternate filename to
-            give to the .csv file; the prec argument specifies the
-            precision for the values
+            give to the .csv file
+            Optional prec argument specifies the precision for the values
         '''
-        data = self.get_data(include_times=True)
+        # Format filename
         name = f'{self.name}.csv' if name is None else name
-        header = ','.join(self.get_column_names())
-        fmt_str = f'%.{prec}f'
+        
+        # Get data
+        data = self.get_data(include_times=True)
+        ncols = len(data[0])
+
+        # Convert first column in data to ISO timestamps
+        epoch = self.get_epoch()
+        timestamps = ff_time.ticks_to_iso_ts(data[:,0], epoch)
+
+        # Restructure data array so first column is of string type
+        dtype = np.dtype('U72' + ',>f8' * (ncols - 1))
+        data = rfn.unstructured_to_structured(data, dtype=dtype)
+        data['f0'] = timestamps
+    
+        # Format header
+        column_names = self.get_column_names()
+        column_names[0] = 'TIME'
+        header = ','.join(column_names)
+
+        # Generate formatting string
+        fmt_str = ['%s'] + [f'%.{prec}f'] * (ncols - 1)
 
         np.savetxt(name, data, delimiter=',', header=header, fmt=fmt_str, 
             comments='')
@@ -540,6 +559,11 @@ class ff_writer():
             Sets the time array (in SCET) and data in record format
             
             Optional epoch argument is passed to set_epoch()
+
+            Input: 
+                times - array of length m, 
+                data - array of shape m x n
+                epoch - string
         '''
         # Make sure data is structured correctly
         self._data_shape_checks()
@@ -558,7 +582,7 @@ class ff_writer():
         if epoch:
             self.set_epoch(epoch)
     
-    def set_column_names(self, col_names, col_units=None, col_sources=None):
+    def set_column_names(self, names, units=None, sources=None):
         ''' 
             Sets the column names for non-time columns 
             
@@ -567,14 +591,14 @@ class ff_writer():
             Optional col_units and col_sources arguments are passed to
             set_units() and set_sources() respectively
         '''
-        col_names = ['SCET'] + col_names
-        self.header.set_columns(col_names)
+        names = ['SCET'] + names
+        self.header.set_columns(names)
 
-        if col_units is not None:
-            self.set_units(col_units)
+        if units is not None:
+            self.set_units(units)
         
-        if col_sources is not None:
-            self.set_units(col_sources)
+        if sources is not None:
+            self.set_units(sources)
 
     def set_units(self, col_units):
         ''' 
