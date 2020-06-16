@@ -108,7 +108,7 @@ def ticks_to_datetimes(ticks, epoch):
 
     return datevals, true_leaps
 
-def ticks_to_asc_ts(ticks, epoch):
+def ticks_to_iso_ts(ticks, epoch):
     ''' Converts an array of time ticks relative to the given epoch to a
         timestamp in year-month-dayThh:mm:ss.sss format
     '''
@@ -129,7 +129,7 @@ def ticks_to_asc_ts(ticks, epoch):
 
     return datestrs
 
-def ticks_to_ff_ts(ticks, epoch):
+def ticks_to_ts(ticks, epoch):
     ''' 
         Converts an array of time ticks relative to the given epoch to a
         timestamp in year month_abrv day hh:mm:ss.sss format
@@ -155,17 +155,17 @@ def tick_to_date(tick, epoch):
     dates, leaps = ticks_to_datetimes(np.array([tick]), epoch)
     return dates[0]
 
-def tick_to_asc_ts(tick, epoch):
+def tick_to_iso_ts(tick, epoch):
     ''' Converts a tick to a timestamp in year-month-dayThh:mm:ss.sss format '''
-    return ticks_to_asc_ts(np.array([tick]), epoch)[0]
+    return ticks_to_iso_ts(np.array([tick]), epoch)[0]
 
-def tick_to_ff_ts(tick, epoch):
+def tick_to_ts(tick, epoch):
     ''' 
         Converts a tick to a timestamp in 'year month_abrv day hh:mm:ss.sss' format
     '''
-    return ticks_to_ff_ts(np.array([tick]), epoch)[0]
+    return ticks_to_ts(np.array([tick]), epoch)[0]
 
-def ff_ts_to_asc(ts):
+def ff_ts_to_iso(ts):
     ''' Maps UTC timestamp from flat file to year-month-dayThh:mm:ss.sss format '''
     year, doy, mon, day, timestr = ts.split(' ')
     monstr = datetime.strptime(mon, '%b').strftime('%m')
