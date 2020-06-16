@@ -345,6 +345,15 @@ class ff_header():
             Input: A list of strings
         '''
         self.abstract = ['{:<72}'.format(line) for line in abstract]
+    
+    def get_col_desc_table(self):
+        ''' Returns structured numpy array representing the column
+            description table
+        '''
+        if self.col_table:
+            return np.array(self.col_table)
+        else:
+            return None
 
 class ff_reader():
     fmts = ['index', 'tick', 'datetime', 'timestamps']
@@ -513,6 +522,14 @@ class ff_writer():
         '''
         self.name = name
         self.header = ff_header(name, read_mode=False, copy_header=copy_header)
+    
+    def _data_shape_checks(self, times, data):
+        ''' Performs validity checks against data and times passed to set_data '''
+        if len(times) != len(data):
+            raise Exception('Error: Length of times != # of records in data')
+        
+        if len(times) == 0 or len(data) == 0:
+            raise Exception('Error: Data cannot be empty!')
 
     def set_epoch(self, epoch):
         ''' Sets the epoch (in string-format) for the file '''
@@ -524,6 +541,9 @@ class ff_writer():
             
             Optional epoch argument is passed to set_epoch()
         '''
+        # Make sure data is structured correctly
+        self._data_shape_checks()
+
         # Set data array
         times = np.reshape(times, (len(times), 1))
         self.data = np.hstack([times, data])

@@ -13,8 +13,8 @@ ts_fmt = '%Y-%m-%dT%H:%M:%S.%f'
 epoch_to_dt = {
     'Y1966':datetime(1966, 1, 1),
     'Y1970':datetime(1970, 1, 1),
-    'Y2000':datetime(2000, 1, 1), 
-    'J2000':datetime(2000, 1, 1, 12),
+    'Y2000':datetime(2000, 1, 1) - timedelta(seconds=32.184), 
+    'J2000':datetime(2000, 1, 1, 12) - timedelta(seconds=32.184),
 }
 
 ff_leap_table = leap_table()
@@ -33,7 +33,7 @@ def date_to_ff_tick(date, epoch):
 
     diff = date - epoch_dt
     scet = diff.total_seconds() + (ref_leap - base_leap)
-    return scet + 32 if epoch_dt >= epoch_to_dt['Y2000'] else scet
+    return scet if epoch_dt >= epoch_to_dt['Y2000'] else scet
 
 def get_leap_info(epoch):
     ''' Returns leapseconds in datetime format, ticks since the given epoch, 
@@ -157,13 +157,13 @@ def tick_to_date(tick, epoch):
 
 def tick_to_asc_ts(tick, epoch):
     ''' Converts a tick to a timestamp in year-month-dayThh:mm:ss.sss format '''
-    return ticks_to_asc_ts(np.array(tick), epoch)[0]
+    return ticks_to_asc_ts(np.array([tick]), epoch)[0]
 
 def tick_to_ff_ts(tick, epoch):
     ''' 
         Converts a tick to a timestamp in 'year month_abrv day hh:mm:ss.sss' format
     '''
-    return ticks_to_ff_ts(np.array(tick), epoch)[0]
+    return ticks_to_ff_ts(np.array([tick]), epoch)[0]
 
 def ff_ts_to_asc(ts):
     ''' Maps UTC timestamp from flat file to year-month-dayThh:mm:ss.sss format '''
