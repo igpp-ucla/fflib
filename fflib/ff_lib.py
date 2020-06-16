@@ -466,7 +466,7 @@ class ff_reader():
         dtype = [(name, t) for name, t in zip(names, dtype.split(','))]
 
         # Convert data table to records format
-        table = np.rec.fromarrays(self.data.T, dtype=dtype)
+        table = rfn.unstructured_to_structured(data, dtype=np.dtype(dtype))
 
         return table
     
@@ -520,9 +520,10 @@ class ff_reader():
         data['f0'] = timestamps
     
         # Format header
-        column_names = self.get_column_names()
-        column_names[0] = 'TIME'
-        header = ','.join(column_names)
+        col_names = self.get_column_names()
+        time_lbl = col_names[0]
+        col_names[0] = 'TIME' if 'time' not in time_lbl.lower() else time_lbl
+        header = ','.join(col_names)
 
         # Generate formatting string
         fmt_str = ['%s'] + [f'%.{prec}f'] * (ncols - 1)
