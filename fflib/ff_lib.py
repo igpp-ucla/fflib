@@ -528,6 +528,7 @@ class ff_reader():
         # Generate formatting string
         fmt_str = ['%s'] + [f'%.{prec}f'] * (ncols - 1)
 
+        # Save to file
         np.savetxt(name, data, delimiter=',', header=header, fmt=fmt_str, 
             comments='')
 
@@ -583,7 +584,8 @@ class ff_writer():
         if epoch:
             self.set_epoch(epoch)
     
-    def set_column_names(self, names, units=None, sources=None):
+    def set_column_names(self, names, units=None, sources=None,
+        time_label='SCET'):
         ''' 
             Sets the column names for non-time columns 
             
@@ -591,8 +593,13 @@ class ff_writer():
 
             Optional col_units and col_sources arguments are passed to
             set_units() and set_sources() respectively
+
+            Optional time_label arg specifies a label for the time column
         '''
-        names = ['SCET'] + names
+        if self.header.get_desc_table.shape[0] != (len(names) - 1):
+            raise Exception('List length != # of columns in description table')
+
+        names = [time_label] + names
         self.header.set_columns(names)
 
         if units is not None:
@@ -607,11 +614,17 @@ class ff_writer():
 
             Input: A list of strings
         '''
+        if self.header.get_desc_table.shape[0] != (len(col_units) - 1):
+            raise Exception('List length != # of columns in description table')
+
         col_units = ['Seconds'] + col_units
         self.header.set_units(col_units)
     
     def set_sources(self, col_sources):
         ''' Sets data column sources '''
+        if self.header.get_desc_table.shape[0] != (len(sources) - 1):
+            raise Exception('List length != # of columns in description table')
+
         sources = [''] + sources
         self.header.set_sources(col_sections)
     

@@ -13,5 +13,11 @@ setuptools.setup(
     install_requires=['numpy>=1.15.0'],
     packages=['fflib'],
     python_requires='>=3.6',
-    include_package_data=True
+    include_package_data=True,
+	entry_points={
+		'console_scripts': [
+			'fflist=fflib.ff_util:fflist',
+			'ff2csv=fflib.ff_util:ff2csv',
+		],
+	},
 )

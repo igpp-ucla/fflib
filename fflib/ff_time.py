@@ -9,42 +9,55 @@ ff_fmt = '%Y %j %b %d %H:%M:%S.%f'
 # ASCII file strptime/strftime format
 ts_fmt = '%Y-%m-%dT%H:%M:%S.%f'
 
+# Seconds to offset >=Y2000 epochs by
+ofst_delta = 32.184
+table_delta = ofst_delta - 0.184 # Seconds to offset leap second table vals by
+
 # Maps epochs to datetime objects
 epoch_to_dt = {
     'Y1966':datetime(1966, 1, 1),
     'Y1970':datetime(1970, 1, 1),
-    'Y2000':datetime(2000, 1, 1) - timedelta(seconds=32.184), 
-    'J2000':datetime(2000, 1, 1, 12) - timedelta(seconds=32.184),
+    'Y2000':datetime(2000, 1, 1) - timedelta(seconds=ofst_delta), 
+    'J2000':datetime(2000, 1, 1, 12) - timedelta(seconds=ofst_delta),
 }
 
 ff_leap_table = leap_table()
 
-def date_to_ff_tick(date, epoch):
+def date_to_tick(date, epoch):
     ''' Maps a datetime object to a seconds since epoch '''
     # Get initial leap seconds value from table
     epoch_dt = epoch_to_dt[epoch]
+    if epoch != 'Y1966':
+        index = bisect_left(ff_leap_table['date'], epoch_dt)
 
-    index = bisect_left(ff_leap_table['date'], epoch_dt)
-    base_leap = ff_leap_table['leap_sec'][index]
+        if ff_leap_table['date'][0] > epoch_dt:
+            base_leap = 0
+        else:
+            base_leap = ff_leap_table['leap_sec'][index]
 
-    # Get leap seconds value of datetime passed
-    index = bisect_left(ff_leap_table['date'], date)
-    ref_leap = ff_leap_table['leap_sec'][index]
-
+        # Get leap seconds value of datetime passed
+        if ff_leap_table['date'][0] > date:
+            ref_leap = 0
+        else:
+            index = bisect_left(ff_leap_table['date'], date)
+            ref_leap = ff_leap_table['leap_sec'][index]
+    else:
+        base_leap, ref_leap = 0, 0
     diff = date - epoch_dt
     scet = diff.total_seconds() + (ref_leap - base_leap)
-    return scet if epoch_dt >= epoch_to_dt['Y2000'] else scet
+
+    return scet
 
 def get_leap_info(epoch):
     ''' Returns leapseconds in datetime format, ticks since the given epoch, 
         and their respective leap offsets
     '''
     dates = ff_leap_table['date']
-    seconds = [date_to_ff_tick(date, epoch) for date in dates]
+    seconds = [date_to_tick(date, epoch) for date in dates]
     leapvalues = ff_leap_table['leap_sec']
     return dates, seconds, leapvalues
 
-def ticks_to_datetimes(ticks, epoch):
+def ticks_to_dates(ticks, epoch):
     ''' 
         Maps seconds relative to an epoch to datetime objects
 
@@ -58,10 +71,13 @@ def ticks_to_datetimes(ticks, epoch):
     if len(ticks) == 0:
         return np.array([])
 
+    ticks = np.array(ticks, dtype='f8')
     t0, t1 = ticks[[0, -1]]
 
     # Get leapseconds datetimes, resp. ticks relative to epoch, and leap offsets
     dates, seconds, leapvalues = get_leap_info(epoch)
+    if epoch_dt > datetime(1999, 1, 1):
+        leapvalues = np.array(leapvalues) - table_delta
 
     # Find the indices where leap seconds occur (if any) and their respective offsets
     leap_offsets = []
@@ -92,6 +108,10 @@ def ticks_to_datetimes(ticks, epoch):
     epoch_dt = epoch_to_dt[epoch]
     datevals = np.array([epoch_dt+timedelta(seconds=t) for t in ticks])
 
+    # Ignore leap seconds for Y1966 epoch
+    if epoch == 'Y1966':
+        return datevals, []
+
     # Make pairs of indices to remove leap offset from
     if len(leap_indices) == 0:
         bases = [base_leap_offset]
@@ -99,7 +119,7 @@ def ticks_to_datetimes(ticks, epoch):
     else:
         bases = [base_leap_offset] + leap_offsets
         pairs = [0] + leap_indices + [len(ticks)]
-
+    
     # Adjust datetimes by leapseconds
     for z in range(0, len(bases)):
         base = bases[z]
@@ -116,7 +136,7 @@ def ticks_to_iso_ts(ticks, epoch):
         return np.array([])
 
     # Convert ticks to datetimes and get indices of leap seconds
-    datevals, true_leaps = ticks_to_datetimes(ticks, epoch)
+    datevals, true_leaps = ticks_to_dates(ticks, epoch)
     
     # Convert datetimes to timestamps (%-formatting faster than strftime)
     fmt_str = '%d-%02d-%02dT%02d:%02d:%02d.%06d'
@@ -138,7 +158,7 @@ def ticks_to_ts(ticks, epoch):
         return np.array([])
 
     # Convert ticks to datetimes and get indices of leap seconds
-    datevals, true_leaps = ticks_to_datetimes(ticks, epoch)
+    datevals, true_leaps = ticks_to_dates(ticks, epoch)
     
     # Convert datetimes to timestamps (%-formatting faster than strftime)
     dt_to_ts = lambda dt : dt.strftime(ff_fmt)
@@ -152,7 +172,7 @@ def ticks_to_ts(ticks, epoch):
 
 def tick_to_date(tick, epoch):
     ''' Converts a tick to a datetime object '''
-    dates, leaps = ticks_to_datetimes(np.array([tick]), epoch)
+    dates, leaps = ticks_to_dates(np.array([tick]), epoch)
     return dates[0]
 
 def tick_to_iso_ts(tick, epoch):
