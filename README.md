@@ -89,7 +89,7 @@ Returns the error flag for the data
 Returns the sources listed for each column
 
 <b>get_time_range(self)</b></br>
-Returns the start/end time of this file
+Returns the start/end time ticks of this file
 
 <b>get_times(self, fmt='ticks')</b></br>
 Returns the time array
@@ -103,20 +103,24 @@ Prints key information from the header file and column desc table
 <b>shape(self)</b></br>
 Returns the number of rows and columns in the file
 
-<b>to_csv(self, name=None, prec=7, timestamps=False)</b></br>
+<b>to_csv(self, name=None, prec=7)</b></br>
 Writes out the flat file data to a comma-separated-value file<br>Optional name argument specifies an alternate filename to
-give to the .csv file; the prec argument specifies the
-precision for the values
+give to the .csv file
+Optional prec argument specifies the precision for the values
+
 ## ff_writer
 <b>set_abstract(self, abstract)</b></br>
 Sets the abstract for the header file<br>Input: A list of strings (one per line)
 
-<b>set_column_names(self, col_names, col_units=None, col_sources=None)</b></br>
+<b>set_column_names(self, names, units=None, sources=None, time_label='SCET')</b></br>
 Sets the column names for non-time columns <br>Input: A list of strings<br>Optional col_units and col_sources arguments are passed to
-set_units() and set_sources() respectively
+set_units() and set_sources() respectively<br>Optional time_label arg specifies a label for the time column
 
 <b>set_data(self, times, data, epoch=None)</b></br>
-Sets the time array (in SCET) and data in record format<br>Optional epoch argument is passed to set_epoch()
+Sets the time array (in SCET) and data in record format<br>Optional epoch argument is passed to set_epoch()<br>Input: 
+    times - array of length m, 
+    data - array of shape m x n
+    epoch - string
 
 <b>set_epoch(self, epoch)</b></br>
 Sets the epoch (in string-format) for the file
@@ -134,8 +138,11 @@ Sets the units for non-time columns <br>Input: A list of strings
 Writes out binary data to .ffd file and ASCII header
 content to .ffh file <br>Optional name argument specifies a filename to write to
 other than the one passed to the instance
+
 ## ff_time
-<b>date_to_ff_tick(date, epoch)</b></br>
+Note: Arrays assumed to have increasing time ticks, datetimes, timestamps, etc.
+
+<b>date_to_tick(date, epoch)</b></br>
 Maps a datetime object to a seconds since epoch
 
 <b>ff_ts_to_iso(ts)</b></br>
@@ -158,7 +165,7 @@ Converts a tick to a timestamp in year-month-dayThh:mm:ss.sss format
 <b>tick_to_ts(tick, epoch)</b></br>
 Converts a tick to a timestamp in 'year month_abrv day hh:mm:ss.sss' format
 
-<b>ticks_to_datetimes(ticks, epoch)</b></br>
+<b>ticks_to_dates(ticks, epoch)</b></br>
 Maps seconds relative to an epoch to datetime objects<br>Returns a tuple -> (list of datetimes, indices of leap seconds)
 
 <b>ticks_to_iso_ts(ticks, epoch)</b></br>
@@ -168,3 +175,4 @@ timestamp in year-month-dayThh:mm:ss.sss format
 <b>ticks_to_ts(ticks, epoch)</b></br>
 Converts an array of time ticks relative to the given epoch to a
 timestamp in year month_abrv day hh:mm:ss.sss format
+
