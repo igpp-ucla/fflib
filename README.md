@@ -15,7 +15,7 @@ times = ff.get_times() # Time column in seconds since epoch time
 
 epoch = ff.get_epoch()
 
-cols = ff.get_column_names()
+cols = ff.get_labels()
 ```
 
 ## Writing files
@@ -31,12 +31,11 @@ epoch = 'J2000'
 ff = ff_writer(file_name)
 ff.set_epoch(epoch)
 ff.set_data(times, data)
-ff.set_column_names(columns)
+ff.set_labels(columns)
 
 # Write to file
 ff.write()
 ```
-
 
 ## Time format conversion
 ```
