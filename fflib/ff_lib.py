@@ -461,7 +461,7 @@ class ff_reader():
             self._read_data()
 
         # Create dtype w/ column names
-        names = self.get_column_names()
+        names = self.get_labels()
         dtype = self._get_dtype(len(names))
         dtype = [(name, t) for name, t in zip(names, dtype.split(','))]
 
@@ -470,7 +470,7 @@ class ff_reader():
 
         return table
     
-    def get_column_names(self):
+    def get_labels(self):
         ''' Returns the label for each column '''
         return self.header.get_columns()
     
@@ -520,7 +520,7 @@ class ff_reader():
         data['f0'] = timestamps
     
         # Format header
-        col_names = self.get_column_names()
+        col_names = self.get_labels()
         time_lbl = col_names[0]
         col_names[0] = 'TIME' if 'time' not in time_lbl.lower() else time_lbl
         header = ','.join(col_names)
@@ -584,7 +584,7 @@ class ff_writer():
         if epoch:
             self.set_epoch(epoch)
     
-    def set_column_names(self, names, units=None, sources=None,
+    def set_labels(self, names, units=None, sources=None,
         time_label='SCET'):
         ''' 
             Sets the column names for non-time columns 
