@@ -466,7 +466,7 @@ class ff_reader():
         dtype = [(name, t) for name, t in zip(names, dtype.split(','))]
 
         # Convert data table to records format
-        table = rfn.unstructured_to_structured(data, dtype=np.dtype(dtype))
+        table = rfn.unstructured_to_structured(self.data, dtype=np.dtype(dtype))
 
         return table
     
@@ -568,7 +568,7 @@ class ff_writer():
                 epoch - string
         '''
         # Make sure data is structured correctly
-        self._data_shape_checks()
+        self._data_shape_checks(times, data)
 
         # Set data array
         times = np.reshape(times, (len(times), 1))
@@ -596,7 +596,8 @@ class ff_writer():
 
             Optional time_label arg specifies a label for the time column
         '''
-        if self.header.get_desc_table.shape[0] != (len(names) - 1):
+        desc_table = self.header.get_desc_table()
+        if desc_table is not None and desc_table.shape[0] != (len(names) - 1):
             raise Exception('List length != # of columns in description table')
 
         names = [time_label] + names
@@ -614,7 +615,8 @@ class ff_writer():
 
             Input: A list of strings
         '''
-        if self.header.get_desc_table.shape[0] != (len(col_units) - 1):
+        desc_table = self.header.get_desc_table()
+        if desc_table is not None and desc_table.shape[0] != (len(col_units) - 1):
             raise Exception('List length != # of columns in description table')
 
         col_units = ['Seconds'] + col_units
@@ -622,7 +624,8 @@ class ff_writer():
     
     def set_sources(self, col_sources):
         ''' Sets data column sources '''
-        if self.header.get_desc_table.shape[0] != (len(sources) - 1):
+        desc_table = self.header.get_desc_table()
+        if desc_table is not None and desc_table.shape[0] != (len(sources) - 1):
             raise Exception('List length != # of columns in description table')
 
         sources = [''] + sources

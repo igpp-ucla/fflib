@@ -4,7 +4,7 @@ Simplified Python Flat File Library
 ## Examples
 ## Reading files
 ```
-from fflib import ff_reader, ff_writer
+from fflib import ff_reader
 
 name = 'test'
 ff = ff_reader(name)
@@ -20,9 +20,10 @@ cols = ff.get_labels()
 
 ## Writing files
 ```
+from fflib import ff_writer
 # Data to be written to file
 file_name = 'test'
-times = [0,1,2,3,4]
+times = [0,1,2,3]
 data = [[0,5,5],[12,251,11],[23,444,523],[434,121,123]]
 columns = ['Bx', 'By', 'Bz']
 epoch = 'J2000'
