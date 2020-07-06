@@ -1,7 +1,7 @@
 # fflib
 Simplified Python Flat File Library
 
-# Examples
+## Examples
 ## Reading files
 ```
 from fflib import ff_reader, ff_writer
@@ -50,7 +50,7 @@ times = ff.get_times()
 
 # Convert to datetime objects
 # leap_indices contains locations of leap seconds
-dates, leap_indices = ff_time.ticks_to_datetimes(ticks, epoch)
+dates, leap_indices = ff_time.ticks_to_dates(ticks, epoch)
 
 # Convert to year-month-dayThh:mm:ss.sss format
 iso_ts = ff_time.ticks_to_iso_ts(ticks, epoch)

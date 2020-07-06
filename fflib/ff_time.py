@@ -9,9 +9,10 @@ ff_fmt = '%Y %j %b %d %H:%M:%S.%f'
 # ASCII file strptime/strftime format
 ts_fmt = '%Y-%m-%dT%H:%M:%S.%f'
 
-# Seconds to offset >=Y2000 epochs by
-ofst_delta = 32.184
-table_delta = ofst_delta - 0.184 # Seconds to offset leap second table vals by
+# Seconds to offset >=Y2000 epochs by, should be 32.184 but
+# this does not seem to be compatible for some reason
+ofst_delta = 32
+table_delta = ofst_delta # Seconds to offset leap second table vals by
 
 # Maps epochs to datetime objects
 epoch_to_dt = {
@@ -24,7 +25,7 @@ epoch_to_dt = {
 ff_leap_table = leap_table()
 
 def date_to_tick(date, epoch):
-    ''' Maps a datetime object to a seconds since epoch '''
+    ''' Maps a datetime object to seconds since epoch '''
     # Get initial leap seconds value from table
     epoch_dt = epoch_to_dt[epoch]
     if epoch != 'Y1966':

@@ -504,7 +504,7 @@ class ff_reader():
             Optional prec argument specifies the precision for the values
         '''
         # Format filename
-        name = f'{self.name}.csv' if name is None else name
+        name = f'{self.name}.csv' if name is None else f'{name}.csv'
         
         # Get data
         data = self.get_data(include_times=True)

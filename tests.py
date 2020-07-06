@@ -39,7 +39,7 @@ def leapless_tests():
 def specific_tests():
     ''' Specific case tests '''
     test_date = ff_time.tick_to_date(1669835119.051, 'Y1966')
-    date = '2018-11-30 19:05:19.051000'
+    date = datetime(2018, 11, 30, 19, 5, 19, 51000)
     assert(test_date == date)
 
 def exact_leap_tests():
@@ -66,13 +66,57 @@ def exact_leap_tests():
         for leap_date in leap_dates:
             leap_tick = ff_time.date_to_tick(leap_date, epoch)
             dates, leaps = ff_time.ticks_to_dates([leap_tick - 1, leap_tick], epoch)
+            # Only one leap second found, leap date = previous second, 
+            # and first date = last date (expected behavior)
             assert(len(leaps) == 1)
             assert(dates[1] == leap_date - timedelta(seconds=1))
             assert(dates[0] == dates[1])
 
 def general_leap_tests():
-    pass
+    leap_dates = [datetime(1974, 1, 1), datetime(2006, 1, 1), datetime(2009, 1, 1)]
+
+    # Test Y1970 epoch against exact leap seconds
+    leap_ticks = []
+    for leap_date in leap_dates:
+        leap_tick = ff_time.date_to_tick(leap_date, 'Y1970')
+        leap_ticks.append(leap_tick)
+        leap_ticks.append(leap_tick+1)
+    dates, leaps = ff_time.ticks_to_dates(leap_ticks, 'Y1970')
+
+    assert(len(leaps) == 3)
+    assert(leaps == [0, 2, 4])
+    assert(dates[1] == (dates[0] + timedelta(seconds=1)))
+
+    # Tests for >=2000 epochs
+    for epoch in ['J2000', 'Y2000']:
+        leap_ticks = []
+        for leap_date in leap_dates:
+            leap_tick = ff_time.date_to_tick(leap_date, epoch)
+            leap_ticks.append(leap_tick)
+            leap_ticks.append(leap_tick+1)
+        dates, leaps = ff_time.ticks_to_dates(leap_ticks, epoch)
+
+        assert(leap_ticks[0] < 0)
+        assert(len(leaps) == 3)
+        assert(leaps == [0, 2, 4])
+        assert(dates[1] == (dates[0] + timedelta(seconds=1)))
+
+    # Test with leapseconds but no exact values
+    for epoch in ['J2000', 'Y2000']:
+        middle_ticks = []
+        for leap_date in leap_dates[1:]:
+            leap_tick = ff_time.date_to_tick(leap_date, epoch)
+            middle_ticks.append(leap_tick+2)
+        correct_dates = [leap_dates[1] + timedelta(seconds=1), leap_dates[2] + timedelta(seconds=1)]
+        dates, leaps = ff_time.ticks_to_dates(middle_ticks, epoch)
+
+        for cd, td in zip(correct_dates, dates):
+            assert(cd == td)
+
+        assert(len(leaps) == 0)
 
 epoch_tests()
 leapless_tests()
+specific_tests()
 exact_leap_tests()
+general_leap_tests()
