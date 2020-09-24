@@ -1,6 +1,12 @@
 from fflib import ff_time
 from fflib.ff_time import ofst_delta
 from datetime import datetime, timedelta
+
+from FF_Time import FFTIME
+import spiceypy as spice
+import numpy as np
+spice.furnsh('latest_leapseconds.tls')
+
 epochs = list(ff_time.epoch_to_dt.keys())
 
 def epoch_tests():
@@ -57,20 +63,38 @@ def exact_leap_tests():
     # Test Y1970 epoch against exact leap seconds
     for leap_date in leap_dates:
         leap_tick = ff_time.date_to_tick(leap_date, 'Y1970')
-        dates, leaps = ff_time.ticks_to_dates([leap_tick], 'Y1970')
+        dates, leaps = ff_time.ticks_to_dates([leap_tick-1, leap_tick], 'Y1970')
         assert(len(leaps) == 1)
-        assert(dates[0] == leap_date)
+        assert(dates[1] == leap_date)
 
     # Test leap second values for 2000 epochs
-    for epoch in ['Y2000', 'J2000']:
-        for leap_date in leap_dates:
-            leap_tick = ff_time.date_to_tick(leap_date, epoch)
-            dates, leaps = ff_time.ticks_to_dates([leap_tick - 1, leap_tick], epoch)
-            # Only one leap second found, leap date = previous second, 
-            # and first date = last date (expected behavior)
-            assert(len(leaps) == 1)
-            assert(dates[1] == leap_date - timedelta(seconds=1))
-            assert(dates[0] == dates[1])
+    # for epoch in ['Y2000', 'J2000']:
+    #     for leap_date in leap_dates:
+    #         leap_tick = ff_time.date_to_tick(leap_date, epoch)
+            # dates, leaps = ff_time.ticks_to_dates([leap_tick - 1, leap_tick], epoch)
+            # print (dates)
+            # # Only one leap second found, leap date = previous second, 
+            # # and first date = last date (expected behavior)
+            # assert(len(leaps) == 1)
+            # assert(dates[0] == leap_date - timedelta(seconds=1))
+            # assert(dates[1] == leap_date)
+
+    # Test J2000 leap second dates against CSPICE epoch values
+    epoch = 'J2000'
+    for leap_date in leap_dates:
+        leap_tick = ff_time.date_to_tick(leap_date, epoch)
+
+        # Get fftime and CSPICE conversions
+        ts = leap_date.strftime('%Y %j %b %d %H:%M:%S.%f')
+        fftime_tick = FFTIME(ts, Epoch=epoch)._tick
+
+        spice_tick = spice.utc2et(leap_date.isoformat())
+
+        # Check that spice tick and fftime_tick are close
+        # (subtracting ofst_delta beforehand since epochs
+        #  are defined differently)
+        comp = fftime_tick - ofst_delta
+        assert(np.isclose(comp, spice_tick, 0.1))
 
 def general_leap_tests():
     leap_dates = [datetime(1974, 1, 1), datetime(2006, 1, 1), datetime(2009, 1, 1)]
@@ -105,8 +129,8 @@ def general_leap_tests():
     for epoch in ['J2000', 'Y2000']:
         middle_ticks = []
         for leap_date in leap_dates[1:]:
-            leap_tick = ff_time.date_to_tick(leap_date, epoch)
-            middle_ticks.append(leap_tick+2)
+            leap_tick = ff_time.date_to_tick(leap_date, epoch, fold_mode=True)
+            middle_ticks.append(leap_tick+1)
         correct_dates = [leap_dates[1] + timedelta(seconds=1), leap_dates[2] + timedelta(seconds=1)]
         dates, leaps = ff_time.ticks_to_dates(middle_ticks, epoch)
 
@@ -115,8 +139,17 @@ def general_leap_tests():
 
         assert(len(leaps) == 0)
 
+def dates_test():
+    prev = datetime(2006, 1, 1) - timedelta(seconds=1)
+    leap = datetime(2005, 12, 31, 23, 59, 59, fold=1)
+    post = datetime(2006, 1, 1) + timedelta(seconds=1)
+    dates = [prev, leap, post]
+    ticks = ff_time.dates_to_ticks(dates, 'J2000', fold_mode=True)    
+    print (ticks)
+
 epoch_tests()
 leapless_tests()
 specific_tests()
 exact_leap_tests()
 general_leap_tests()
+dates_test()

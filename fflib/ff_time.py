@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+from dateutil import parser
 import numpy as np
 from bisect import bisect_left
 from .leap_table import leap_table
@@ -24,30 +25,80 @@ epoch_to_dt = {
 
 ff_leap_table = leap_table()
 
-def date_to_tick(date, epoch):
-    ''' Maps a datetime object to seconds since epoch '''
-    # Get initial leap seconds value from table
+def get_leap(date):
+    if ff_leap_table['date'][0] > date:
+        base_leap = 0
+    else:
+        index = bisect_left(ff_leap_table['date'], date)
+        if index >= len(ff_leap_table) or ff_leap_table['date'][index] != date:
+            index = max(index - 1, 0)
+        base_leap = ff_leap_table['leap_sec'][index]
+    return base_leap
+
+def date_to_tick(date, epoch, fold_mode=False):
+    ''' Maps a datetime object to seconds since epoch 
+    
+        fold_mode specifies whether leap seconds are
+        indicated by a fold=1 attribute for a datetime;
+        otherwise, map to leap datetimes to
+        value past leap second
+    '''
+
+    return dates_to_ticks([date], epoch, fold_mode)[0]
+
+def dates_to_ticks(dates, epoch, fold_mode=False):
     epoch_dt = epoch_to_dt[epoch]
     if epoch != 'Y1966':
-        index = bisect_left(ff_leap_table['date'], epoch_dt)
-
-        if ff_leap_table['date'][0] > epoch_dt:
-            base_leap = 0
-        else:
-            base_leap = ff_leap_table['leap_sec'][index]
-
-        # Get leap seconds value of datetime passed
-        if ff_leap_table['date'][0] > date:
-            ref_leap = 0
-        else:
-            index = bisect_left(ff_leap_table['date'], date)
-            ref_leap = ff_leap_table['leap_sec'][index]
+        base_leap = get_leap(epoch_dt)
     else:
-        base_leap, ref_leap = 0, 0
-    diff = date - epoch_dt
-    scet = diff.total_seconds() + (ref_leap - base_leap)
+        base_leap = 0
 
-    return scet
+    # Find leap dates between start and end dates
+    start_dt = dates[0]
+    end_dt = dates[-1]
+
+    # Diff calculates total seconds between date and epoch date
+    diff = lambda dt : (dt - epoch_dt).total_seconds()
+    secs = np.array(list(map(diff, dates)))
+
+    if epoch == 'Y1966':
+        return secs
+
+    # Find leap indices within dates range
+    leap_dates = ff_leap_table['date']
+    leap_indices = []
+    leap_vals = []
+    for i in range(0, len(leap_dates)):
+        leap_date = leap_dates[i]
+        if leap_date >= start_dt and leap_date < end_dt:
+            index = bisect_left(dates, leap_date)
+            if fold_mode:
+                if (dates[index] == leap_date) and dates[index].fold == 1:
+                    dates[index] = dates[index] + timedelta(seconds=1)
+                elif (index+1) < len(dates) and (dates[index+1] == leap_date) and (dates[index+1].fold==1):
+                    dates[index+1] = dates[index+1] + timedelta(seconds=1)
+                    index = index + 1
+            leap_indices.append(index)
+            leap_vals.append(ff_leap_table['leap_sec'][i])
+
+    # Set up base leaps
+    ofsts = []
+    if len(leap_indices) < 1 or leap_indices[0] != 0:
+        ref_leap = get_leap(start_dt)
+        ofsts = [ref_leap] + leap_vals
+        indices = [0] + leap_indices + [len(dates)]
+    else:
+        ofsts = leap_vals
+        indices = leap_indices + [len(dates)]
+
+    # Substract offsets for each section
+    for i in range(0, len(ofsts)):
+        ref_leap = ofsts[i]
+        start = indices[i]
+        end = indices[i+1]
+        secs[start:end] = secs[start:end] + (ref_leap - base_leap)
+
+    return secs
 
 def get_leap_info(epoch):
     ''' Returns leapseconds in datetime format, ticks since the given epoch, 
@@ -79,7 +130,7 @@ def ticks_to_dates(ticks, epoch):
     dates, seconds, leapvalues = get_leap_info(epoch)
     if epoch_dt > datetime(1999, 1, 1):
         leapvalues = np.array(leapvalues) - table_delta
-
+    
     # Find the indices where leap seconds occur (if any) and their respective offsets
     leap_offsets = []
     leap_indices = []
@@ -88,17 +139,18 @@ def ticks_to_dates(ticks, epoch):
     for leap, leapval in zip(seconds, leapvalues):
         # If a leap second falls within range of t0 and t1
         if leap >= t0 and leap <= t1:
-            # Find the index where this offset occurs and store it
-            leap_offsets.append(leapval)
             index = bisect_left(ticks, leap)
-            leap_indices.append(index)
-
+            
             # If the leap second val is in the actual time array,
             # store it as a 'true_leap' to replace the timestamp for later
             if index < len(ticks) and ticks[index] == leap:
                 true_leaps.append(index)
             elif index - 1 > 0 and ticks[index-1] == leap:
                 true_leaps.append(index-1)
+
+            # Find the index where this offset occurs and store it
+            leap_offsets.append(leapval)
+            leap_indices.append(index)
 
         elif leap <= t0:
             # Largest leap second <= t0 is used to set 
@@ -186,9 +238,18 @@ def tick_to_ts(tick, epoch):
     '''
     return ticks_to_ts(np.array([tick]), epoch)[0]
 
-def ff_ts_to_iso(ts):
-    ''' Maps UTC timestamp from flat file to year-month-dayThh:mm:ss.sss format '''
-    year, doy, mon, day, timestr = ts.split(' ')
+def utc_to_date(ts):
+    fmt = '%Y %b %d %H:%M:%S.%f'
+    return datetime.strptime(ts, fmt)
+
+def iso_to_date(ts):
+    date = parser.isoparse(ts)
+    return date
+
+def utc_to_iso(ts):
+    ''' Maps from (year month day hh:mm:ss.sss) to year-month-dayThh:mm:ss.sss format '''
+    year, mon, day, timestr = ts.split(' ')
     monstr = datetime.strptime(mon, '%b').strftime('%m')
     datestr = '-'.join([year, monstr, day])
     return f'{datestr}T{timestr}'
+
