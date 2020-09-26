@@ -532,6 +532,10 @@ class ff_reader():
         np.savetxt(name, data, delimiter=',', header=header, fmt=fmt_str, 
             comments='')
 
+    def close(self):
+        self.data = None
+        self.times = None
+
 class ff_writer():
     def __init__(self, name, copy_header=None):
         ''' 

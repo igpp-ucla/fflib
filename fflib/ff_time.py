@@ -47,6 +47,16 @@ def date_to_tick(date, epoch, fold_mode=False):
     return dates_to_ticks([date], epoch, fold_mode)[0]
 
 def dates_to_ticks(dates, epoch, fold_mode=False):
+    # Check if empty
+    if len(dates) == 0:
+        return []
+
+    # Check if dates have tzinfo and remove
+    tzinfo = dates[0].tzinfo
+    if tzinfo is not None:
+        dates = [dt.replace(tzinfo=None) for dt in dates]
+
+    # Get base leap second
     epoch_dt = epoch_to_dt[epoch]
     if epoch != 'Y1966':
         base_leap = get_leap(epoch_dt)
