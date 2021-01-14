@@ -601,7 +601,7 @@ class ff_writer():
             Optional time_label arg specifies a label for the time column
         '''
         desc_table = self.header.get_desc_table()
-        if desc_table is not None and desc_table.shape[0] != (len(names) - 1):
+        if desc_table is not None and desc_table.shape[0] != (len(names) + 1):
             raise Exception('List length != # of columns in description table')
 
         names = [time_label] + names
@@ -620,7 +620,7 @@ class ff_writer():
             Input: A list of strings
         '''
         desc_table = self.header.get_desc_table()
-        if desc_table is not None and desc_table.shape[0] != (len(col_units) - 1):
+        if desc_table is not None and desc_table.shape[0] != (len(col_units) + 1):
             raise Exception('List length != # of columns in description table')
 
         col_units = ['Seconds'] + col_units
@@ -629,7 +629,7 @@ class ff_writer():
     def set_sources(self, col_sources):
         ''' Sets data column sources '''
         desc_table = self.header.get_desc_table()
-        if desc_table is not None and desc_table.shape[0] != (len(sources) - 1):
+        if desc_table is not None and desc_table.shape[0] != (len(sources) + 1):
             raise Exception('List length != # of columns in description table')
 
         sources = [''] + sources
