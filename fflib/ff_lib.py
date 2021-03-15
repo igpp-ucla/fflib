@@ -32,6 +32,7 @@ class ff_header():
         self.error_flag = 1e32
         self.keyword_dict = {}
         self.col_table = None
+        self._fmt_str = None
 
         if read_mode:
             self._read()
@@ -182,13 +183,13 @@ class ff_header():
         return self.col_table
     
     def get_columns(self):
-        return self.col_table['NAME']
+        return self.col_table[self.col_sections[1]]
     
     def get_units(self):
-        return self.col_table['UNITS']
+        return self.col_table[self.col_sections[2]]
     
     def get_sources(self):
-        return self.col_table['SOURCES']
+        return self.col_table[self.col_sections[3]]
     
     def get_abstract(self):
         return self.abstract
@@ -232,6 +233,10 @@ class ff_header():
         format_objs[0] = '{:0>3}' # Zero-padded column numbers
         format_str = ' '.join(format_objs)
 
+        if self._fmt_str is not None:
+            format_objs = self._fmt_str
+            format_str = ' '.join(format_objs)
+
         # Format table entries
         lines = []
         for row in table:
@@ -246,6 +251,13 @@ class ff_header():
         header = '{:<72}'.format(header)
 
         return [header] + lines
+    
+    def set_compatible(self):
+        pos = [0, 4, 14, 24, 50, 56, 60]
+        lengths = np.diff(pos) - 1
+        format_strs = [f'{{:<{n}}}' for n in lengths]
+        format_strs[0] = '{:0>3}'
+        self._fmt_str = format_strs
     
     def _format_key_val_pairs(self, keys):
         ''' Formats key-value pairs into 72-character width lines '''
@@ -294,8 +306,7 @@ class ff_header():
     def _init_table(self, ncol):
         ''' Initialize an empty column description table w/ the
             given number of entries '''
-        dtype = [(name, self.type_map[name]) for name in self.col_sections]
-        self.col_table = np.zeros(ncol, dtype=dtype)
+        self.col_table = np.zeros(ncol, dtype=self._table_dtype())
 
         # Fill column numbers
         self.col_table['#'] = np.arange(1, ncol+1)
@@ -309,26 +320,87 @@ class ff_header():
         self.col_table['LOC'][0] = 0
         self.col_table['LOC'][1:] = np.arange(8, last_loc, 4)
     
+    def get_recl(self):
+        recl = self.get_value('RECL')
+        if recl is None:
+            if self.col_table is None:
+                return 0
+            else:
+                last_loc = self.col_table['LOC'][-1]
+                last_type = self.col_table['TYPE'][-1]
+                last_length = self._type_to_bitlength(last_type)
+                recl = last_loc + last_length
+                self.set_value('RECL', recl)
+                return recl
+        return int(recl)
+
+    def _table_dtype(self):
+        dtype = [(name, self.type_map[name]) for name in self.col_sections]
+        return dtype
+
+    def _get_dtype(self):
+        locs = self.col_table['LOC'].tolist()
+        last_elem = 4 if self.col_table['TYPE'][-1] == 'R' else 8
+        locs += [locs[-1] + last_elem]
+        lengths = np.diff(locs)
+        dtype = [f'>f{i}' for i in lengths if i > 0]
+        return ','.join(dtype)
+    
     def set_columns(self, names):
         ''' Sets column names '''
         if self.col_table is None:
             self._init_table(len(names))
-        
-        self.col_table['NAME'] = names
+
+        self.col_table[self.col_sections[1]] = names
+    
+    def set_locations(self, locs):
+        self.col_table['LOC'] = locs
+    
+    def get_locations(self):
+        return self.col_table['LOC']
+    
+    def set_types(self, types):
+        self.col_table['TYPE'] = types
+    
+    def append_row(self, name, units='', src='', datatype='R'):
+        table_dtype = self._table_dtype()
+        if self.col_table is None:
+            table = np.array([0, '', '', '', 0], dtype=table_dtype)
+            row = 0
+            recl = 0
+        else:
+            table = self.col_table
+            row = self.col_table['#'][-1]
+            recl = int(self.get_value('RECL'))
+
+        row = row + 1
+        loc = recl
+        length = + self._type_to_bitlength(datatype)
+        record = [(row, name, units, src, datatype, loc)]
+        record = np.array(record, dtype=table_dtype)
+        table = rfn.stack_arrays([table, record])
+        self.col_table = table
+        self.set_value('RECL', recl + length)
+
+    def _type_to_bitlength(self, t):
+        if t == 'R':
+            return 4
+        else:
+            return 8
 
     def set_units(self, units):
         ''' Sets column units '''
         if self.col_table is None:
             self._init_table(len(units))
         
-        self.col_table['UNITS'] = units
+        self.col_table[self.col_sections[2]] = units
 
     def set_sources(self, sources):
         ''' Sets unit sources '''
         if self.col_table is None:
             self._init_table(len(sources))
         
-        self.col_table['SOURCES'] = sources
+        self.col_table[self.col_sections[3]] = sources
     
     def set_error_flag(self, flag):
         ''' Sets the error flag for the file '''
@@ -350,7 +422,7 @@ class ff_header():
         ''' Returns structured numpy array representing the column
             description table
         '''
-        if self.col_table:
+        if self.col_table is None:
             return np.array(self.col_table)
         else:
             return None
@@ -383,7 +455,7 @@ class ff_reader():
         num_bytes = rows * recl
 
         # Convert binary records to data
-        dtype = self._get_dtype(cols)
+        dtype = self.header._get_dtype()
         if num_bytes == len(data): # If no extra bytes detected
             # Read data from file w/ given dtype and convert to unstructured array
             data = np.fromfile(f'{self.name}.ffd', dtype, rows)
@@ -403,10 +475,6 @@ class ff_reader():
         rows = int(self.header.get_value('NROWS'))
         cols = int(self.header.get_value('NCOLS'))
         return (rows, cols)
-
-    def _get_dtype(self, cols):
-        ''' Generates the dtype string for an array w/ the given number of cols '''
-        return '>f8' + ',>f4' * (cols-1)
 
     def check_exists(self):
         ''' Checks that the header and data files exist and are not empty '''
@@ -462,7 +530,7 @@ class ff_reader():
 
         # Create dtype w/ column names
         names = self.get_labels()
-        dtype = self._get_dtype(len(names))
+        dtype = self.header._get_dtype()
         dtype = [(name, t) for name, t in zip(names, dtype.split(','))]
 
         # Convert data table to records format
@@ -582,7 +650,6 @@ class ff_writer():
         rows, cols = self.data.shape
         self.header.set_value('NCOLS', cols)
         self.header.set_value('NROWS', rows)
-        self.header.set_value('RECL', 8 + 4 * (cols - 1))
 
         # Set epoch if given
         if epoch:
@@ -601,7 +668,7 @@ class ff_writer():
             Optional time_label arg specifies a label for the time column
         '''
         desc_table = self.header.get_desc_table()
-        if desc_table is not None and desc_table.shape[0] != (len(names) - 1):
+        if desc_table is not None and desc_table.shape[0] != (len(names) + 1):
             raise Exception('List length != # of columns in description table')
 
         names = [time_label] + names
@@ -620,7 +687,7 @@ class ff_writer():
             Input: A list of strings
         '''
         desc_table = self.header.get_desc_table()
-        if desc_table is not None and desc_table.shape[0] != (len(col_units) - 1):
+        if desc_table is not None and desc_table.shape[0] != (len(col_units) + 1):
             raise Exception('List length != # of columns in description table')
 
         col_units = ['Seconds'] + col_units
@@ -629,11 +696,11 @@ class ff_writer():
     def set_sources(self, col_sources):
         ''' Sets data column sources '''
         desc_table = self.header.get_desc_table()
-        if desc_table is not None and desc_table.shape[0] != (len(sources) - 1):
+        if desc_table is not None and desc_table.shape[0] != (len(col_sources) + 1):
             raise Exception('List length != # of columns in description table')
 
-        sources = [''] + sources
-        self.header.set_sources(col_sections)
+        sources = [''] + col_sources
+        self.header.set_sources(sources)
     
     def set_abstract(self, abstract):
         ''' 
@@ -658,12 +725,14 @@ class ff_writer():
         if name is None:
             name = self.name
 
+        # Make sure record length is set before writing
+        recl = self.header.get_recl()
+
         # Write out header file
         self.header.write(name)
 
         # Convert data to binary format
-        ncols = self.header.get_value('NCOLS')
-        dtype = '>f8' + ',>f4'*(ncols-1)
+        dtype = self.header._get_dtype()
         data = np.rec.fromarrays(self.data.T, dtype=dtype)
         data = data.tobytes()
 

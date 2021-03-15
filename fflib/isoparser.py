@@ -25,7 +25,7 @@ class ISOParser(parser.isoparser):
         if len(components) > 3 and components[3] == 24:
             components[3] = 0
             res = datetime(*components, fold=int(leap)) + timedelta(days=1)
-
+    
         res = datetime(*components, fold=int(leap))
 
         return res
