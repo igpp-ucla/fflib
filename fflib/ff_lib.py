@@ -2,6 +2,7 @@ import re
 import numpy as np
 import os
 from . import ff_time
+from datetime import datetime
 from numpy.lib import recfunctions as rfn
 
 class ff_header():
@@ -10,7 +11,7 @@ class ff_header():
     # col_sections = sections in column desc table
     # col_types = numpy dtype for each column desc section
     # type_map = dict mapping col_sections to col_types
-    pre_col_keys = ['DATA', 'RECL', 'NCOLS', 'NROWS', 'OPSYS', 'EPOCH']
+    pre_col_keys = ['DATA', 'CDATE', 'RECL', 'NCOLS', 'NROWS', 'OPSYS', 'EPOCH']
     col_sections = ['#', 'NAME', 'UNITS', 'SOURCE', 'TYPE', 'LOC']
     col_types = ['i', 'U72', 'U72', 'U72', 'U72', 'i']
     type_map = {name:dtype for name, dtype in zip(col_sections, col_types)}
@@ -29,15 +30,20 @@ class ff_header():
         self.name = ff_name
         self.abstract = None
         self.epoch = 'Y1966'
-        self.error_flag = 1e32
+        self.error_flag = 1e31
         self.keyword_dict = {}
         self.col_table = None
         self._fmt_str = None
 
+        # Read values
         if read_mode:
             self._read()
         elif copy_header is not None:
             self._read(copy_header)
+
+        # Set initial values
+        self.set_value('DATA', os.path.basename(ff_name) + '.ffd')
+        self.set_value('OPSYS', 'UNKNOWN')
 
     def __str__(self):
         return f'Header: {self.name}'
@@ -91,6 +97,15 @@ class ff_header():
             index += 1
         del index
 
+        # Find end of abstract
+        final_index = len(lines) 
+        for i in range(header_end, len(lines)):
+            # Skip everything after END line
+            end_expr = '^END +$'
+            if re.fullmatch(end_expr, lines[i]):
+                final_index = i
+                break
+
         if header_start is None:
             raise Exception('Error: Could not read column information')
         
@@ -125,7 +140,7 @@ class ff_header():
         self.col_table = self._read_column_info(lines[header_start:header_end])
 
         # Save abstract
-        self.abstract = lines[header_end:-1]
+        self.abstract = lines[header_end+1:final_index]
 
     def _read_column_info(self, lines):
         ''' 
@@ -727,6 +742,17 @@ class ff_writer():
 
         # Make sure record length is set before writing
         recl = self.header.get_recl()
+
+        # Get start/stop time to put in abstract
+        times = self.data[:,0]
+        epoch = self.header.get_epoch()
+        t0, t1 = times[0], times[-1]
+        d0 = ff_time.tick_to_date(t0, epoch)
+        d1 = ff_time.tick_to_date(t1, epoch)
+        fmt = '%Y %j %b %d %H:%M:%S.%f'
+        self.header.set_value('FIRST TIME', d0.strftime(fmt))
+        self.header.set_value('LAST TIME', d1.strftime(fmt))
+        self.header.set_value('CDATE', datetime.today().strftime(fmt))
 
         # Write out header file
         self.header.write(name)
