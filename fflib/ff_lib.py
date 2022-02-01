@@ -1,4 +1,5 @@
 import re
+import struct
 import numpy as np
 import os
 from . import ff_time
@@ -441,7 +442,13 @@ class ff_header():
             return np.array(self.col_table)
         else:
             return None
-
+    
+    def get_time_index(self):
+        types = self.col_table['TYPE']
+        if 'T' in types:
+            return list(types).index('T')
+        return 0
+    
 class ff_reader():
     fmts = ['index', 'tick', 'datetime', 'timestamps']
     def __init__(self, name):
@@ -454,17 +461,23 @@ class ff_reader():
     def __str__(self):
         return f'Flat File: {self.name}'
 
+    def _filename(self):
+        return f'{self.name}.ffd'
+
+    def _record_length(self):
+        return int(self.header.get_value('RECL'))
+
     def _read_data(self):
         ''' Reads in the data from the file and stores it at self.data '''
         try:
-            fd = open(f'{self.name}.ffd', 'rb')
+            fd = open(self._filename(), 'rb')
             data = fd.read()
             fd.close()
         except:
             raise Exception('Error: Could not open data file for reading')
 
         # Determine the shape of the file and the expected # of bytes in the data
-        recl = int(self.header.get_value('RECL'))
+        recl = self._record_length()
         rows = int(len(data)/recl)
         cols = int(self.header.get_value('NCOLS'))
         num_bytes = rows * recl
@@ -484,7 +497,7 @@ class ff_reader():
         self.data = data
 
         return data
-    
+
     def shape(self):
         ''' Returns the number of rows and columns in the file '''
         rows = int(self.header.get_value('NROWS'))
@@ -494,7 +507,7 @@ class ff_reader():
     def check_exists(self):
         ''' Checks that the header and data files exist and are not empty '''
         header_file = f'{self.name}.ffh'
-        data_file = f'{self.name}.ffd'
+        data_file = self._filename()
 
         for file in [header_file, data_file]:
             if not os.path.exists(file):
@@ -508,6 +521,11 @@ class ff_reader():
     def list_header(self):
         ''' Prints key information from the header file and column desc table '''
         self.header.list_info()
+        if self._is_filesize_valid():
+            range_ticks = self.get_time_range()
+            epoch = self.get_epoch()
+            range_dates = ff_time.ticks_to_iso_ts(list(range_ticks), epoch)
+            print (f'Date range: {range_dates}')
 
     def get_epoch(self):
         ''' Returns the epoch (in string format) of the file '''
@@ -527,14 +545,14 @@ class ff_reader():
 
         return data
     
-    def get_times(self, fmt='ticks'):
+    def get_times(self):
         ''' Returns the time array '''
         if self.data is None:
             self._read_data()
         
         times = self.data[:,0]
         return times
-
+    
     def get_data_table(self):
         ''' 
             Returns data w/ time tick column as a structured
@@ -552,7 +570,7 @@ class ff_reader():
         table = rfn.unstructured_to_structured(self.data, dtype=np.dtype(dtype))
 
         return table
-    
+
     def get_labels(self):
         ''' Returns the label for each column '''
         return self.header.get_columns()
@@ -575,6 +593,9 @@ class ff_reader():
     
     def get_time_range(self):
         ''' Returns the start/end time ticks of this file '''
+        if self._is_filesize_valid() and self.data is None:
+            return self._memmap_time_range()
+
         # Read first/last ticks from time array if data has been loaded
         t0, t1 = self.get_times()[[0, -1]]
         return (t0, t1)
@@ -614,6 +635,51 @@ class ff_reader():
         # Save to file
         np.savetxt(name, data, delimiter=',', header=header, fmt=fmt_str, 
             comments='')
+
+    def _memmap_data(self):
+        # Check if filesize matches expected filesize
+        filename = self._filename()
+
+        if not self._is_filesize_valid():
+            return None
+
+        # Attempt to open file as memmap object
+        try:
+            dtype = self._get_dtype()
+            table = np.memmap(filename, dtype=dtype, mode='r')
+            return table
+        except:
+            return None
+
+    def get_memmap_table(self):
+        return self._memmap_data()
+    
+    def _memmap_time_range(self):
+        # Get time column index and location
+        col = self.header.get_time_index()
+        loc = self.header.col_table['LOC'][col]
+
+        # Determine location of last row
+        recl = self._record_length()
+        rows, cols = self.shape()
+        last_row_loc = max(rows-1, 0) * recl
+
+        # Attempt to read starting & ending time ticks
+        with open(self._filename(), 'rb') as fd:
+            fd.seek(loc)
+            start = fd.read(8)
+            start = struct.unpack('>d', start)[0]
+            fd.seek(last_row_loc)
+            end = fd.read(8)
+            end = struct.unpack('>d', end)[0]
+        
+        return (start, end)
+        
+    def _is_filesize_valid(self):
+        filesize = os.path.getsize(self._filename())
+        rows, cols = self.shape()
+        recl = self._record_length()
+        return ((rows*recl) == filesize)
 
     def close(self):
         self.data = None
