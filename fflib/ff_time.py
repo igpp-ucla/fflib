@@ -128,10 +128,16 @@ def ticks_to_dates(ticks, epoch):
 
     # Map epoch to a datetime
     epoch_dt = epoch_to_dt[epoch]
+    map_func = lambda t : epoch_dt + timedelta(seconds=t)
+
+    # Ignore leap seconds for Y1966 epoch
+    if epoch == 'Y1966':
+        datevals = list(map(map_func, ticks))
+        return datevals, []
 
     # Get start/ending ticks
     if len(ticks) == 0:
-        return np.array([])
+        return []
 
     ticks = np.array(ticks, dtype='f8')
     t0, t1 = ticks[[0, -1]]
@@ -167,14 +173,6 @@ def ticks_to_dates(ticks, epoch):
             # the starting offset for the array
             base_leap_offset = leapval
 
-    # Convert time ticks to datetimes
-    epoch_dt = epoch_to_dt[epoch]
-    datevals = np.array([epoch_dt+timedelta(seconds=t) for t in ticks])
-
-    # Ignore leap seconds for Y1966 epoch
-    if epoch == 'Y1966':
-        return datevals, []
-
     # Make pairs of indices to remove leap offset from
     if len(leap_indices) == 0:
         bases = [base_leap_offset]
@@ -187,7 +185,10 @@ def ticks_to_dates(ticks, epoch):
     for z in range(0, len(bases)):
         base = bases[z]
         sI, eI = pairs[z], pairs[z+1]
-        datevals[sI:eI] -= timedelta(seconds=base)
+        ticks[sI:eI] -= base
+
+    # Convert time ticks to datetimes
+    datevals = list(map(map_func, ticks))
 
     return datevals, true_leaps
 
@@ -204,7 +205,7 @@ def ticks_to_iso_ts(ticks, epoch):
     # Convert datetimes to timestamps (%-formatting faster than strftime)
     fmt_str = '%d-%02d-%02dT%02d:%02d:%02d.%06d'
     dt_to_ts = lambda dt : (fmt_str % (dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second, dt.microsecond))[:-3]
-    datestrs = [dt_to_ts(dt) for dt in datevals]
+    datestrs = list(map(dt_to_ts, datevals))
 
     # Set special timestamp for true leapseconds
     for leap_index in true_leaps:

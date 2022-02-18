@@ -91,7 +91,7 @@ class ff_header():
             # Found if items split by spaces = header names
             if items == set(ff_header.col_sections):
                 header_start = index
-            elif items == set(['ABSTRACT']): # Ends if abstract starts
+            elif line.startswith('ABSTRACT '): # Ends if abstract starts
                 header_end = index
                 break
             
@@ -267,6 +267,9 @@ class ff_header():
         header = '{:<72}'.format(header)
 
         return [header] + lines
+    
+    def get_desc_string(self):
+        return '\n'.join(self._format_col_desc())
     
     def set_compatible(self):
         pos = [0, 4, 14, 24, 50, 56, 60]
@@ -522,9 +525,10 @@ class ff_reader():
         ''' Prints key information from the header file and column desc table '''
         self.header.list_info()
         if self._is_filesize_valid():
-            range_ticks = self.get_time_range()
-            epoch = self.get_epoch()
-            range_dates = ff_time.ticks_to_iso_ts(list(range_ticks), epoch)
+            start, stop = self.get_time_range()
+            start = start.isoformat()
+            stop = stop.isoformat()
+            range_dates = (start, stop)
             print (f'Date range: {range_dates}')
 
     def get_epoch(self):
@@ -550,7 +554,8 @@ class ff_reader():
         if self.data is None:
             self._read_data()
         
-        times = self.data[:,0]
+        index = self.header.get_time_index()
+        times = self.data[:,index]
         return times
     
     def get_data_table(self):
@@ -562,14 +567,18 @@ class ff_reader():
             self._read_data()
 
         # Create dtype w/ column names
-        names = self.get_labels()
-        dtype = self.header._get_dtype()
-        dtype = [(name, t) for name, t in zip(names, dtype.split(','))]
+        dtype = self._labeled_dtype()
 
         # Convert data table to records format
         table = rfn.unstructured_to_structured(self.data, dtype=np.dtype(dtype))
 
         return table
+
+    def _labeled_dtype(self):
+        names = self.get_labels()
+        dtype = self.header._get_dtype()
+        dtype = [(name, t) for name, t in zip(names, dtype.split(','))]
+        return dtype
 
     def get_labels(self):
         ''' Returns the label for each column '''
@@ -592,6 +601,11 @@ class ff_reader():
         return self.header.get_error_flag()
     
     def get_time_range(self):
+        ''' Returns start/end times of this file in datetime formats '''
+        t0, t1 = self.get_tick_range()
+        return ff_time.ticks_to_dates([t0, t1], self.get_epoch())[0]
+    
+    def get_tick_range(self):
         ''' Returns the start/end time ticks of this file '''
         if self._is_filesize_valid() and self.data is None:
             return self._memmap_time_range()
@@ -599,7 +613,7 @@ class ff_reader():
         # Read first/last ticks from time array if data has been loaded
         t0, t1 = self.get_times()[[0, -1]]
         return (t0, t1)
-    
+
     def to_csv(self, name=None, prec=7):
         ''' Writes out the flat file data to a comma-separated-value file
             
@@ -637,6 +651,10 @@ class ff_reader():
             comments='')
 
     def _memmap_data(self):
+        ''' Returns a numpy memmap array-like object representing
+            the data table; This may be faster when wanting to access
+            only part of a large array
+        '''
         # Check if filesize matches expected filesize
         filename = self._filename()
 
@@ -645,8 +663,8 @@ class ff_reader():
 
         # Attempt to open file as memmap object
         try:
-            dtype = self._get_dtype()
-            table = np.memmap(filename, dtype=dtype, mode='r')
+            dtype = self._labeled_dtype()
+            table = np.memmap(filename, dtype=dtype, mode='r', shape=None)
             return table
         except:
             return None
