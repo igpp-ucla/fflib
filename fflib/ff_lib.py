@@ -549,19 +549,51 @@ class ff_reader():
 
         return data
     
-    def get_times(self):
-        ''' Returns the time array '''
+    def get_times(self, fmt='ticks'):
+        ''' Returns the time array 
+        
+            Parameters:
+            -----------
+            time_fmt: string
+                Indicates whether to map data to 
+                    ticks - seconds since epoch time
+                    timestamps - strings in ISO format
+                    datetimes - datetime objects
+        '''
         if self.data is None:
             self._read_data()
         
         index = self.header.get_time_index()
         times = self.data[:,index]
+
+        if fmt != 'ticks':
+            times, dtype = self._map_times(times, fmt)
+
         return times
     
-    def get_data_table(self):
+    def _map_times(self, times, time_fmt):
+        if time_fmt == 'ticks':
+            return (times, 'f8')
+        elif time_fmt == 'timestamps':
+            ts = ff_time.ticks_to_iso_ts(times, self.get_epoch())
+            n = len(ts[0])
+            return (ts, f'U{n}')
+        else:
+            dates = ff_time.ticks_to_dates(times, self.get_epoch())
+            return (dates, 'datetime64[s]')
+
+    def get_data_table(self, time_fmt='ticks'):
         ''' 
             Returns data w/ time tick column as a structured
             numpy array (different from a regular np.array)
+
+            Parameters:
+            -----------
+            time_fmt: string
+                Indicates whether to map data to 
+                    ticks - seconds since epoch time
+                    timestamps - strings in ISO format
+                    datetimes - datetime objects
         '''
         if self.data is None:
             self._read_data()
@@ -571,6 +603,16 @@ class ff_reader():
 
         # Convert data table to records format
         table = rfn.unstructured_to_structured(self.data, dtype=np.dtype(dtype))
+
+        if time_fmt != 'ticks':
+            index = self.header.get_time_index()
+            label = table.dtype.names[index]
+            times = table[label]
+            times, tdtype = self._map_times(times, time_fmt)
+            dtype = table.dtype.descr[:]
+            dtype[index] = (label, tdtype)
+            table = table.astype(dtype)
+            table[label] = times
 
         return table
 
@@ -603,7 +645,7 @@ class ff_reader():
     def get_time_range(self):
         ''' Returns start/end times of this file in datetime formats '''
         t0, t1 = self.get_tick_range()
-        return ff_time.ticks_to_dates([t0, t1], self.get_epoch())[0]
+        return ff_time.ticks_to_dates([t0, t1], self.get_epoch())
     
     def get_tick_range(self):
         ''' Returns the start/end time ticks of this file '''
