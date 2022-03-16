@@ -226,7 +226,7 @@ def ticks_to_dates(ticks, epoch):
     dates, leaps = ticks_to_dates_helper(ticks, epoch, leap_search=False)
     return dates
 
-def ticks_to_iso_ts(ticks, epoch):
+def ticks_to_iso(ticks, epoch):
     ''' 
         Converts an array of time ticks relative to the given epoch to a
         timestamp in year-month-dayThh:mm:ss.sss format
@@ -240,7 +240,7 @@ def ticks_to_iso_ts(ticks, epoch):
 
         Returns:
         --------
-        A list of timestamps
+        A list of strings
     '''
     if len(ticks) == 0:
         return np.array([])
@@ -260,7 +260,7 @@ def ticks_to_iso_ts(ticks, epoch):
 
     return datestrs
 
-def ticks_to_ts(ticks, epoch):
+def ticks_to_timestamps(ticks, epoch):
     ''' 
         Converts an array of time ticks relative to the given epoch to a
         timestamp in "year month_abrv day hh:mm:ss.ssssss" format
@@ -274,7 +274,7 @@ def ticks_to_ts(ticks, epoch):
 
         Returns:
         --------
-        A list of timestamps
+        A list of strings
     '''
     if len(ticks) == 0:
         return np.array([])
@@ -300,18 +300,18 @@ def tick_to_date(tick, epoch):
     dates = ticks_to_dates(np.array([tick]), epoch)
     return dates[0]
 
-def tick_to_iso_ts(tick, epoch):
+def tick_to_iso(tick, epoch):
     ''' Converts a tick to a timestamp in year-month-dayThh:mm:ss.sss format 
         See ticks_to_iso_ts for additional info
     '''
-    return ticks_to_iso_ts(np.array([tick]), epoch)[0]
+    return ticks_to_iso(np.array([tick]), epoch)[0]
 
-def tick_to_ts(tick, epoch):
+def tick_to_timestamp(tick, epoch):
     ''' 
         Converts a tick to a timestamp in 'year month_abrv day hh:mm:ss.sss' format
         See ticks_to_ts for additional info
     '''
-    return ticks_to_ts(np.array([tick]), epoch)[0]
+    return ticks_to_timestamps(np.array([tick]), epoch)[0]
 
 def utc_to_date(ts):
     ''' Converts a UTC timestamp to datetime '''

@@ -160,20 +160,20 @@ array of each leap second entry
 <b>tick_to_date(tick, epoch)</b></br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Converts a tick to a datetime object
 
-<b>tick_to_iso_ts(tick, epoch)</b></br>
+<b>tick_to_iso_str(tick, epoch)</b></br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Converts a tick to a timestamp in year-month-dayThh:mm:ss.sss format
 
-<b>tick_to_ts(tick, epoch)</b></br>
+<b>tick_to_timestamp(tick, epoch)</b></br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Converts a tick to a timestamp in 'year month_abrv day hh:mm:ss.sss' format
 
 <b>ticks_to_dates(ticks, epoch)</b></br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Maps seconds relative to an epoch to datetime objects<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Returns a tuple -> (list of datetimes, indices of leap seconds)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Maps seconds relative to an epoch to datetime objects<br>
 
-<b>ticks_to_iso_ts(ticks, epoch)</b></br>
+<b>ticks_to_iso(ticks, epoch)</b></br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Converts an array of time ticks relative to the given epoch to a
 timestamp in year-month-dayThh:mm:ss.sss format
 
-<b>ticks_to_ts(ticks, epoch)</b></br>
+<b>ticks_to_timestamps(ticks, epoch)</b></br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Converts an array of time ticks relative to the given epoch to a
 timestamp in year month_abrv day hh:mm:ss.sss format
 

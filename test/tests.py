@@ -51,8 +51,8 @@ def fftime_test(dates, ticks, epoch):
         assert (dates == fftime_dates)
 
 def string_test(ticks, epoch):
-    test_iso_strs = ff_time.ticks_to_iso_ts(ticks, epoch)
-    test_isoc_strs = ff_time.ticks_to_ts(ticks, epoch)
+    test_iso_strs = ff_time.ticks_to_iso(ticks, epoch)
+    test_isoc_strs = ff_time.ticks_to_timestamps(ticks, epoch)
     test_isoc_strs = [t[:-3] for t in test_isoc_strs]
     spice_strs = ticks_to_spice_strs(ticks, epoch)
     fftime_strs = [FFTIME(t, Epoch=epoch).UTC for t in ticks]
