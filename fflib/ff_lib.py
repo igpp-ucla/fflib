@@ -575,7 +575,7 @@ class ff_reader():
         if time_fmt == 'ticks':
             return (times, 'f8')
         elif time_fmt == 'timestamps':
-            ts = ff_time.ticks_to_iso_ts(times, self.get_epoch())
+            ts = ff_time.tick_to_iso(times, self.get_epoch())
             n = len(ts[0])
             return (ts, f'U{n}')
         else:
@@ -672,7 +672,7 @@ class ff_reader():
 
         # Convert first column in data to ISO timestamps
         epoch = self.get_epoch()
-        timestamps = ff_time.ticks_to_iso_ts(data[:,0], epoch)
+        timestamps = ff_time.tick_to_iso(data[:,0], epoch)
 
         # Restructure data array so first column is of string type
         dtype = np.dtype('U72' + ',>f8' * (ncols - 1))
