@@ -158,7 +158,7 @@ def dates_to_ticks(dates, epoch):
         return secs
 
     # Get leap seconds to add
-    leap_pairs, leap_ranges = find_leaps(dates, epoch, key='date')
+    leap_pairs, _ = find_leaps(dates, epoch, key='date')
 
     # Add in leap seconds to seconds
     for (sI, eI), val in leap_pairs:

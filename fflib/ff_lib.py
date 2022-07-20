@@ -229,29 +229,24 @@ class ff_header():
         ''' Updates a keyword values in header file '''
         self.keyword_dict[key] = value
     
-    def _format_col_desc(self):
-        ''' Formats column desc table into a list of strings
-            to write to the header file
-        '''
+    def format_table(table, fmt_strs):
         # Determine the length of each column
-        table = self.col_table
-        row_lengths = {}
-        for key in self.col_sections:
+        row_lens = {}
+        for key in ff_header.col_sections:
             items = table[key]
-            if self.type_map[key] == 'i':
-                row_lengths[key] = 3
+            if ff_header.type_map[key] == 'i':
+                row_lens[key] = 3
             else:
-                row_lengths[key] = max(list(map(len, items)))
-                row_lengths[key] = max(row_lengths[key], len(key))
+                row_lens[key] = max(list(map(len, items)))
+                row_lens[key] = max(row_lens[key], len(key))
         
         # Create formatting string based on column max lengths
-        format_objs = [f'{{:<{row_lengths[key]}}}' for key in self.col_sections]
+        format_objs = [f'{{:<{row_lens[key]}}}' for key in ff_header.col_sections]
         format_objs[0] = '{:0>3}' # Zero-padded column numbers
         format_str = ' '.join(format_objs)
 
-        if self._fmt_str is not None:
-            format_objs = self._fmt_str
-            format_str = ' '.join(format_objs)
+        if fmt_strs is not None:
+            format_str = ' '.join(fmt_strs)
 
         # Format table entries
         lines = []
@@ -263,10 +258,16 @@ class ff_header():
         # Format header
         format_objs[0] = '{:>3}' # Adjust index padding
         format_str = ' '.join(format_objs)
-        header = format_str.format(*tuple(self.col_sections))
+        header = format_str.format(*tuple(ff_header.col_sections))
         header = '{:<72}'.format(header)
 
         return [header] + lines
+
+    def _format_col_desc(self):
+        ''' Formats column desc table into a list of strings
+            to write to the header file
+        '''
+        return ff_header.format_table(self.col_table, self._fmt_str)
     
     def get_desc_string(self):
         return '\n'.join(self._format_col_desc())
