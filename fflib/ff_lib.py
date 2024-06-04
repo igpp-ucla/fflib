@@ -822,17 +822,20 @@ class ff_writer():
         if sources is not None:
             self.set_units(sources)
 
-    def set_units(self, col_units):
+    def set_units(self, col_units,
+        time_units='Seconds'):
         ''' 
             Sets the units for non-time columns 
 
             Input: A list of strings
+
+            Optional time_units arg specifies the units for the time column
         '''
         desc_table = self.header.get_desc_table()
         if desc_table is not None and desc_table.shape[0] != (len(col_units) + 1):
             raise Exception('List length != # of columns in description table')
 
-        col_units = ['Seconds'] + col_units
+        col_units = [time_units] + col_units
         self.header.set_units(col_units)
     
     def set_sources(self, col_sources):

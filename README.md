@@ -131,8 +131,8 @@ set_units() and set_sources() respectively<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbs
 <b>set_sources(self, col_sources)</b></br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Sets data column sources
 
-<b>set_units(self, col_units)</b></br>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Sets the units for non-time columns <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Input: A list of strings
+<b>set_units(self, col_units, time_units='Seconds')</b></br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Sets the units for non-time columns <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Input: A list of strings<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Optional time_units arg specifies the units for the time column
 
 <b>write(self, name=None)</b></br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Writes out binary data to .ffd file and ASCII header
