@@ -134,6 +134,8 @@ class ff_header():
         # Set error flag if given
         if 'ERROR FLAG' in info:
             self.error_flag = info['ERROR FLAG']
+        elif 'MISSING DATA FLAG' in info:
+            self.error_flag = info['MISSING DATA FLAG']
         else:
             info['ERROR FLAG'] = self.error_flag
 
