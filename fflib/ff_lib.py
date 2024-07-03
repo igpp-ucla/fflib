@@ -114,18 +114,12 @@ class ff_header():
         info = self._find_keywords(lines[:header_start])
         self.keyword_dict = info
 
-        # Set error flag if given
-        if 'ERROR FLAG' in info:
-            self.error_flag = info['ERROR FLAG']
-        else:
-            info['ERROR FLAG'] = self.error_flag
-        
         # Set epoch if given
         if 'EPOCH' in info:
             self.epoch = info['EPOCH']
         else:
             info['EPOCH'] = self.epoch
-        
+
         # Get header end from key, value pairs if not found earlier
         if header_end is None:
             if 'NCOLS' in info:
@@ -133,9 +127,15 @@ class ff_header():
             else:
                 raise Exception('Error: Could not read column information')
         
-        # Look for any keyword value pairs after column description
+        # Look for any keyword value pairs after column descriptions
         info = self._find_keywords(lines[header_end:])
         self.keyword_dict.update(info)
+
+        # Set error flag if given
+        if 'ERROR FLAG' in info:
+            self.error_flag = info['ERROR FLAG']
+        else:
+            info['ERROR FLAG'] = self.error_flag
 
         # Read in table of column info
         self.col_table = self._read_column_info(lines[header_start:header_end])
