@@ -31,7 +31,7 @@ class ff_header():
         self.name = ff_name
         self.abstract = None
         self.epoch = 'Y1966'
-        self.error_flag = 1e31
+        self.error_flag = 1e+34
         self.keyword_dict = {}
         self.col_table = None
         self._fmt_str = None
